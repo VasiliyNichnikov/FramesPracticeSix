@@ -14,10 +14,18 @@ namespace FramesPracticeSix
             Slots = new Dictionary<string, Slot>()
             {
                 // Компьютер включен
-                { "computerTurnedOn", Slot.BoolSlot(false) },
+                { "computerTurnedOn", Slot.BoolSlot(false).SetDaemon(GetComputerTurnedOnDaemon()) },
                 // Выполнить инструкцию
-                { "instructionCompleted_1", Slot.BoolSlot(false) } 
+                { "instructionCompleted", Slot.BoolSlot(false) } 
             };
+        }
+
+        private Daemon GetComputerTurnedOnDaemon()
+        {
+            return Daemon.CreateDaemon(TypeOfDaemonInvocation.OnChangeSlotValue, () =>
+            {
+                Slots["instructionCompleted"].Value = Slots["computerTurnedOn"].Bool;
+            });
         }
     }
 
@@ -31,10 +39,18 @@ namespace FramesPracticeSix
             Slots = new Dictionary<string, Slot>()
             {
                 // Интернет подключен
-                { "internetConnected", Slot.BoolSlot(false) }, 
+                { "internetConnected", Slot.BoolSlot(false).SetDaemon(GetInternetConnectedDaemon()) }, 
                 // Выполнить инструкцию
-                { "instructionCompleted_2", Slot.BoolSlot(false) } 
+                { "instructionCompleted", Slot.BoolSlot(false) } 
             };
+        }
+
+        private Daemon GetInternetConnectedDaemon()
+        {
+            return Daemon.CreateDaemon(TypeOfDaemonInvocation.OnChangeSlotValue, () =>
+            {
+                Slots["instructionCompleted"].Value = Slots["internetConnected"].Bool;
+            });
         }
     }
 
@@ -48,17 +64,20 @@ namespace FramesPracticeSix
             Slots = new Dictionary<string, Slot>()
             {
                 // Игра установлена
-                { "gameInstalled", Slot.BoolSlot(false).SetDaemon(DaemonGameInstalled()) }, 
+                { "gameInstalled", Slot.BoolSlot(false) }, 
                 // Выполнение инструкции установщика
                 { nameof(ExecutorOfInstallerInstruction), Slot.FrameSlot(executorOfInstallerInstruction) } 
             };
+
+            Slots[nameof(ExecutorOfInstallerInstruction)].Frame.GetSlot("instructionCompleted")
+                .SetDaemon(GetInstructionCompletedDaemon());
         }
 
-        private Daemon DaemonGameInstalled()
+        private Daemon GetInstructionCompletedDaemon()
         {
             return Daemon.CreateDaemon(TypeOfDaemonInvocation.OnChangeSlotValue, () =>
             {
-                Slots[nameof(ExecutorOfInstallerInstruction)].Frame.GetSlot("gameInstalled").Value = Slots["gameRunning"].Bool;
+                Slots["gameInstalled"].Value = Slots[nameof(ExecutorOfInstallerInstruction)].Frame.GetSlot("instructionCompleted").Bool;
             });
         }
     }
@@ -77,6 +96,17 @@ namespace FramesPracticeSix
                 // Выполнение инструкции создания аккаунта
                 {nameof(ExecutorOfAccountCreationInstruction), Slot.FrameSlot(executorOfAccountCreationInstruction)}
             };
+
+            Slots[nameof(ExecutorOfAccountCreationInstruction)].Frame.GetSlot("instructionCompleted")
+                .SetDaemon(GetInstructionCompletedDaemon());
+        }
+
+        private Daemon GetInstructionCompletedDaemon()
+        {
+            return Daemon.CreateDaemon(TypeOfDaemonInvocation.OnChangeSlotValue, () =>
+            {
+                Slots["accountCreated"].Value = Slots[nameof(ExecutorOfAccountCreationInstruction)].Frame.GetSlot("instructionCompleted").Bool;
+            });
         }
     }
 
@@ -89,17 +119,22 @@ namespace FramesPracticeSix
         {
             Slots = new Dictionary<string, Slot>()
             {
-                { "gameRunning", Slot.BoolSlot(false).SetDaemon(DaemonGameLauncher()) }, // Аккаунт создан
+                { "gameRunning", Slot.BoolSlot(false) }, // Аккаунт создан
                 { nameof(GameInstaller), Slot.FrameSlot(gameInstaller) }, //  Установщика игры
                 { nameof(AccountCreator), Slot.FrameSlot(accountCreator) } // Создатель аккаунта
             };
+
+            Slots[nameof(GameInstaller)].Frame.GetSlot("gameInstalled").SetDaemon(GetGameInstallerAndAccountCreatorDaemon());
+            Slots[nameof(AccountCreator)].Frame.GetSlot("accountCreated").SetDaemon(GetGameInstallerAndAccountCreatorDaemon());
         }
 
-        private Daemon DaemonGameLauncher()
+
+        private Daemon GetGameInstallerAndAccountCreatorDaemon()
         {
             return Daemon.CreateDaemon(TypeOfDaemonInvocation.OnChangeSlotValue, () =>
             {
-                Slots[nameof(GameInstaller)].Frame.GetSlot("gameInstalled").Value = Slots["gameRunning"].Bool;
+                Slots["gameRunning"].Value = Slots[nameof(GameInstaller)].Frame.GetSlot("gameInstalled").Bool &&
+                                             Slots[nameof(AccountCreator)].Frame.GetSlot("accountCreated").Bool;
             });
         }
     }
